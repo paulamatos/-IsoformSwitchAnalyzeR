@@ -1,0 +1,351 @@
+#https://bioconductor.org/packages/release/bioc/vignettes/IsoformSwitchAnalyzeR/inst/doc/IsoformSwitchAnalyzeR.html
+
+
+#instalação dos pacotes básicos do bioconductor
+if (!requireNamespace("BiocManager", quietly = TRUE)){
+	    install.packages("BiocManager")
+    BiocManager::install()
+}
+
+#instalação do IsoformSwitchAnalyzeR
+BiocManager::install("IsoformSwitchAnalyzeR")
+
+#carregando a biblioteca do Isoform
+library(IsoformSwitchAnalyzeR)
+
+#importando os dados de quantificação do Kallisto
+kallistoQuant <- importIsoformExpression(
+       parentDir = ("/home/paula/isoform/kallisto/output_kallisto")
+)
+
+#Step 1 of 3: Identifying which algorithm was used...
+#    The quantification algorithm used was: Kallisto
+#    Found 8 quantification file(s) of interest
+#Step 2 of 3: Reading data...
+#Note: importing `abundance.h5` is typically faster than `abundance.tsv`
+#reading in files with read_tsv
+#1 2 3 4 5 6 7 8 
+#Step 3 of 3: Normalizing abundance values (not counts) via edgeR...
+#Done
+
+#visualização
+head(kallistoQuant$abundance, 3)
+#          isoform_id SRR6297956 SRR6297957 SRR6297958 SRR6297959 SRR6297964 SRR6297965  SRR6297966 SRR6297967
+#1 ENSMUST00000193812          0  0.0141654          0 0.05499805 0.01471824 0.04224309 0.000000000 0.00000000
+#2 ENSMUST00000082908          0  0.0000000          0 0.00000000 0.00000000 0.00000000 0.000000000 0.00000000
+#3 ENSMUST00000162897          0  0.0000000          0 0.01455105 0.03084295 0.00000000 0.008851814 0.02520901
+ 
+head(kallistoQuant$counts, 3)
+#          isoform_id SRR6297956 SRR6297957 SRR6297958 SRR6297959 SRR6297964 SRR6297965 SRR6297966 SRR6297967
+#1 ENSMUST00000193812          0  0.6985061          0   4.031888   1.009564   2.764734  0.0000000   0.000000
+#2 ENSMUST00000082908          0  0.0000000          0   0.000000   0.000000   0.000000  0.0000000   0.000000
+#3 ENSMUST00000162897          0  0.0000000          0   1.066733   2.115602   0.000000  0.6293119   1.555648
+
+ head(kallistoQuant$length, 3)
+#          isoform_id SRR6297956 SRR6297957 SRR6297958 SRR6297959 SRR6297964 SRR6297965 SRR6297966 SRR6297967
+#1 ENSMUST00000193812   903.0040   906.8750   905.5670   914.7990    903.078    902.363   900.6480   904.0710
+#2 ENSMUST00000082908    13.3494    13.8907    14.2983    14.8152     13.587     13.583    13.6359    13.9154
+#3 ENSMUST00000162897  3986.0000  3989.8700  3988.5700  3997.8000   3986.080   3985.360  3983.6500  3987.0700
+
+
+#### criação de matriz para agrupamento das amostras ####
+myDesign <- data.frame(
+   sampleID = colnames(kallistoQuant$abundance)[-1],
+   condition = c("treatCisp", "treatCisp", "treatCisp", "treatCisp",
+                 "control", "control", "control", "control")
+ )
+
+myDesign
+#    sampleID condition
+#1 SRR6297956 treatCisp
+#2 SRR6297957 treatCisp
+#3 SRR6297958 treatCisp
+#4 SRR6297959 treatCisp
+#5 SRR6297964   control
+#6 SRR6297965   control
+#7 SRR6297966   control
+#8 SRR6297967   control
+
+
+#### Create switchAnalyzeRlist usando fasta SEM edição dos cabeçalhos ####
+aSwitchList_1 <- importRdata(
+   isoformCountMatrix   = kallistoQuant$counts,
+   isoformRepExpression = kallistoQuant$abundance,
+   designMatrix         = myDesign,
+   isoformExonAnnoation = ("/home/paula/new/gencode.vM20.annotation.gtf"),
+   isoformNtFasta       = ("/home/paula/new/gencode.vM20.transcripts.fa"),
+   fixStringTieAnnotationProblem = TRUE,
+   ignoreAfterPeriod = TRUE, # incluí este comando*
+   showProgress = FALSE
+)
+
+# Teste 2  
+# Create switchAnalyzeRlist usando fasta COM edição dos cabeçalhos #### 
+aSwitchList_2 <- importRdata(
+   isoformCountMatrix   = kallistoQuant$counts,
+   isoformRepExpression = kallistoQuant$abundance,
+   designMatrix         = myDesign,
+   isoformExonAnnoation = ("/home/paula/new/gencode.vM20.annotation.gtf"),
+   isoformNtFasta       = ("/home/paula/new/gencode.vM20.transcripts_editID.fa"),
+   fixStringTieAnnotationProblem = TRUE,
+   ignoreAfterPeriod = TRUE, # incluí este comando*
+   showProgress = FALSE
+)
+
+#log Teste 1 e 2 
+#Step 1 of 7: Checking data...
+#Step 2 of 7: Obtaining annotation...
+#    importing GTF (this may take a while)
+#Done.
+#    24708 ( 18.22%) isoforms were removed since they were not expressed in any samples.
+#Step 3 of 7: Fixing StringTie gene annoation problems...
+#    There were no need to fix any annotation
+#Step 4 of 7: Calculating gene expression and isoform fractions...
+#Step 5 of 7: Merging gene and isoform expression...
+#Step 6 of 7: Making comparisons...
+#Step 7 of 7: Making switchAnalyzeRlist object...
+##### TESTE1
+#The GUESSTIMATED number of genes with differential isoform usage are:
+#           comparison estimated_genes_with_dtu
+#1 treatCisp - control              1386 - 2310
+#Done
+##### TESTE 2
+#The GUESSTIMATED number of genes with differential isoform usage are:
+#           comparison estimated_genes_with_dtu
+#1 treatCisp - control              1226 - 2043
+#Done
+
+> summary(aSwitchList_1)
+This switchAnalyzeRlist list contains:
+ 110907 isoforms from 38863 genes
+ 1 comparison from 2 conditions (in total 8 samples)
+
+Feature analyzed:
+[1] "ORFs, ntSequence"
+> summary(aSwitchList_2)
+This switchAnalyzeRlist list contains:
+ 110907 isoforms from 38863 genes
+ 1 comparison from 2 conditions (in total 8 samples)
+
+Feature analyzed:
+[1] "ORFs, ntSequence"
+
+
+aSwitchListAnalyzed_1 <- isoformSwitchAnalysisPart1(
+  switchAnalyzeRlist = aSwitchList_1,
+  pathToOutput = getwd(),
+  outputSequences = TRUE,
+  prepareForWebServers = TRUE,
+)
+
+#Step 1 of 3 : Detecting isoform switches...
+#Step 3 of 3 : Extracting (and outputting) sequences
+#The 'removeLongAAseq' and 'removeShortAAseq' arguments:
+# Removed : 12 isoforms.
+# Trimmed : 233 isoforms (to only contain the first 1000 AA)
+#The 'alsoSplitFastaFile' caused 7 fasta files, each with a subset of the data, to be created (each named X of Y).
+#
+#The number of isoform switches found were:
+#            Comparison nrIsoforms nrSwitches nrGenes
+#1 control vs treatCisp       2079       1300    1115
+#The nucleotide and amino acid sequences of these isoforms have been outputted to the supplied directory.
+#These sequences enabling external analysis of protein domians (Pfam), coding potential (CPAT/CPC2) or signal peptides (SignalIP).
+#See ?analyzeCPAT, ?analyzeCPC2, ?analyzePFAM or?analyzeSignalIP (under details) for suggested ways of running these three tools.
+#Warning messages:
+#1: In DESeqDataSet(rse, design, ignoreRank = TRUE) :
+#  some variables in design formula are characters, converting to factors
+#2: In extractSequence(switchAnalyzeRlist = switchAnalyzeRlist, genomeObject = genomeObject,  :
+#  There were 178 isoforms where the amino acid sequence had a stop codon before the annotated stop codon. These was be removed.
+
+
+### Overview Plots
+### Volcano Plot 1
+volcanoiso <- ggplot(data=aSwitchListAnalyzed_1$isoformFeatures, aes(x=dIF, y=-log10(isoform_switch_q_value))) +
+  geom_point(
+    aes( color=abs(dIF) > 0.1 & isoform_switch_q_value < 0.05 ), # default cutoff
+    size=1
+  ) +
+  geom_hline(yintercept = -log10(0.05), linetype='dashed') + # default cutoff
+  geom_vline(xintercept = c(-0.2, 0.1), linetype='dashed') + # default cutoff
+  #facet_wrap(~ condition_1 ~ condition_2) +
+  #facet_grid(condition_1 ~ condition_2) + # alternative to facet_wrap if you have overlapping conditions
+  scale_color_manual('Signficant\nIsoform Switch', values = c('black','red')) +
+  labs(x='dIF', y='-Log10 ( FDR )') +
+  theme_classic()
+
+
+volcanoiso
+### Volcano Plot 2
+
+ggplot(data=aSwitchListAnalyzed_1$isoformFeatures, aes(x=gene_log2_fold_change, y=dIF)) +
+  geom_point(
+    aes( color=abs(dIF) > 0.1 & isoform_switch_q_value < 0.05 ), # default cutoff
+    size=1
+  ) +
+  facet_wrap(~ condition_2) +
+  #facet_grid(condition_1 ~ condition_2) + # alternative to facet_wrap if you have overlapping conditions
+  geom_hline(yintercept = 0, linetype='dashed') +
+  geom_vline(xintercept = 0, linetype='dashed') +
+  scale_color_manual('Signficant\nIsoform Switch', values = c('black','red')) +
+  labs(x='Gene log2 fold change', y='dIF') +
+  theme_bw()
+
+###Part 2
+
+aSwitchListAnalyzed_1 <- extractSequence(
+  aSwitchListAnalyzed_1, 
+  pathToOutput = getwd(),
+  writeToFile=TRUE # to avoid output when running this example data
+)
+#Step 1 of 3 : Extracting transcript nucleotide sequences...
+#Step 2 of 3 : Extracting ORF AA sequences...
+#Step 3 of 3 : Preparing output...
+#The 'removeLongAAseq' and 'removeShortAAseq' arguments:
+# Removed : 12 isoforms.
+# Trimmed : 0 isoforms (to only contain the first 1000 AA)
+#Done
+
+
+### Add CPC analysis
+aSwitchListAnalyzed_1 <- analyzeCPC2(
+    switchAnalyzeRlist   = aSwitchListAnalyzed_1,
+    pathToCPC2resultFile = "/home/paula/new/part1/result_cpc2.txt",
+    removeNoncodinORFs   = TRUE   # because ORF was predicted de novo
+)
+# Added coding potential to 5749 (100%) transcripts
+
+
+### Add PFAM analysis
+aSwitchListAnalyzed_1<- analyzePFAM(
+  switchAnalyzeRlist   = aSwitchListAnalyzed_1,
+  pathToPFAMresultFile = "/home/paula/new/part1/hmmer.result",
+  showProgress=FALSE
+)
+#Converting AA coordinats to transcript and genomic coordinats...
+#Added domain information to 1578 (27.45%) transcripts
+#Warning message:
+#In analyzePFAM(switchAnalyzeRlist = aSwitchListAnalyzed_1, pathToPFAMresultFile = "/home/paula/new/part1/hmmer.result",  :
+#  Removed the prefix ">" from all Pfam results since we suspect they are not supposed to be there.
+
+
+### Add SignalP analysis
+aSwitchListAnalyzed_1<- analyzeSignalP(
+  switchAnalyzeRlist       = aSwitchListAnalyzed_1,
+  pathToSignalPresultFile  = "/home/paula/new/part1/signalP_results.txt"
+)
+Error in analyzeSignalP(switchAnalyzeRlist = aSwitchListAnalyzed_1, pathToSignalPresultFile = "/home/paula/new/part1/signalP_results.txt") :
+  No signial peptides were found
+
+### Add IUPred2A analysis
+aSwitchListAnalyzed_1 <- analyzeIUPred2A(
+  switchAnalyzeRlist        = aSwitchListAnalyzed_1,
+  pathToIUPred2AresultFile = "/home/paula/new/part1/IUPred2A.result",
+  showProgress = FALSE
+)
+#Step 1 of 4 : Reading results into R...
+#Step 2 of 4 : Extracting regions of interest...
+#Step 3 of 4 : Integrating IDR with binding site predictions...
+#Step 4 of 4 : Converting AA coordinats to transcript and genomic coordinats...
+#Added IDR information to 1165 (20.26%) transcripts
+
+###switchAnalyzeRlist list contains:
+aSwitchListAnalyzed_1
+
+#This switchAnalyzeRlist list contains:
+# 5749 isoforms from 1115 genes
+# 1 comparison from 2 conditions (in total 8 samples)
+
+#Switching features:
+#            Comparison Isoforms Switches Genes
+#1 control vs treatCisp     2079     1300  1115
+
+#Feature analyzed:
+#[1] "Isoform Switch Identification, ORFs, ntSequence, aaSequence, Protein Domains, IDR, Coding Potential"
+
+
+###Prediting alternative splicing 
+aSwitchListAnalyzed_1<- analyzeAlternativeSplicing(
+  switchAnalyzeRlist = aSwitchListAnalyzed_1,
+  quiet=TRUE
+)
+
+extractSplicingSummary(aSwitchListAnalyzed_1)
+
+splicingEnrichment <- extractSplicingEnrichment(
+  aSwitchListAnalyzed_1,
+  splicingToAnalyze='all',
+  returnResult=TRUE,
+  returnSummary=TRUE
+)
+
+extractSplicingEnrichment(aSwitchListAnalyzed_1)
+
+
+###Predicting Switch Consequences
+
+###intron retention alternative splicing must first be classified.
+
+aSwitchListAnalyzed_1 <- analyzeIntronRetention(
+  aSwitchListAnalyzed_1,
+  onlySwitchingGenes = TRUE,
+  alpha = 0.05,
+  dIFcutoff = 0.1,
+  showProgress = TRUE,
+  quiet = FALSE
+)
+
+consequencesOfInterest <- c('intron_retention','coding_potential','NMD_status',
+                            'domains_identified','ORF_seq_similarity')
+
+aSwitchListAnalyzed_1 <- analyzeSwitchConsequences(
+  aSwitchListAnalyzed_1,
+  consequencesToAnalyze = consequencesOfInterest, 
+  dIFcutoff = 0.1, 
+  showProgress=FALSE
+)
+#Step 1 of 4: Extracting genes with isoform switches...
+#Step 2 of 4: Analyzing 1300 pairwise isoforms comparisons...
+#Step 3 of 4: Massaging isoforms comparisons results...
+#Step 4 of 4: Preparing output...
+#Identified  genes with containing isoforms switching with functional consequences...
+
+
+extractSwitchSummary(aSwitchListAnalyzed_1)
+#            Comparison nrIsoforms nrSwitches nrGenes
+#1 control vs treatCisp       2079       1300    1115
+extractSwitchSummary(aSwitchListAnalyzed_1, filterForConsequences = TRUE)
+#            Comparison nrIsoforms nrSwitches nrGenes
+#1 control vs treatCisp       1617       1022     855
+extractConsequenceSummary(aSwitchListAnalyzed_1)
+extractConsequenceEnrichment(aSwitchListAnalyzed_1)
+#  condition_1 condition_2         conseqPair                                                    feature
+#1     control   treatCisp   coding_potential Transcript is coding (paired with Transcript is Noncoding)
+#2     control   treatCisp domains_identified                      Domain gain (paired with Domain loss)
+#3     control   treatCisp   intron_retention  Intron retention gain (paired with Intron retention loss)
+#4     control   treatCisp         NMD_status                NMD insensitive (paired with NMD sensitive)
+#5     control   treatCisp                ORF          Complete ORF gain (paired with Complete ORF loss)
+#6     control   treatCisp         ORF_length                 ORF is longer (paired with ORF is shorter)
+#  propOfRelevantEvents  propCiLo  propCiHi     propPval nUp nDown     propQval Significant
+#1            0.3082192 0.2652562 0.3537955 6.471004e-16 135   303 1.294201e-15        TRUE
+#2            0.3300330 0.2926761 0.3690563 4.126326e-17 200   406 1.237898e-16        TRUE
+#3            0.4869110 0.4141013 0.5601332 7.723417e-01  93    98 7.723417e-01       FALSE
+#4            0.2000000 0.1042959 0.3297285 8.699372e-06  11    44 1.304906e-05        TRUE
+#5            0.3115672 0.2725585 0.3526685 1.525850e-18 167   369 9.155101e-18        TRUE
+#6            0.3658537 0.2921312 0.4445201 7.362474e-04  60   104 8.834969e-04        TRUE
+
+
+topSwitch <- extractTopSwitches(aSwitchListAnalyzed_1)
+switchPlot(aSwitchListAnalyzed_1, gene = "Trmt2a")
+#Error in expressionAnalysisPlot(switchAnalyzeRlist = eArgList$switchAnalyzeRlist,  : 
+#  The gene supplied is not pressent in the switchAnalyzeRlist. did you mean any of: 'Trmt2b'
+> switchPlot(aSwitchListAnalyzed_1, gene = "Trmt2b")
+
+
+isoSwithandDETs <- left_join(isoformSwitchRes_filter, DE_trans_type, by = c("isoform_id"="transcript_ID"))
+isoSwithandDETsfin <- na.omit(isoSwithandDETs)
+
+topSwitchesCol1.7G2 <- extractTopSwitches(aSwitchListAnalyzed_1, n=100) 
+
+isoformSwitchRes_filter <- isoformSwitchRes %>%
+  filter(padj < 0.05) 
+
